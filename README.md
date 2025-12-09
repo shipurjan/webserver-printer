@@ -9,3 +9,9 @@ Run on a fresh Debian/Ubuntu server:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/shipurjan/setup-hetzner-website/refs/heads/master/init.sh | bash
 ```
+
+## Local testing
+
+```bash
+docker build -t setup-hetzner . && docker run --rm -it setup-hetzner
+```
