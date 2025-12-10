@@ -117,7 +117,7 @@ git -C /root/.oh-my-zsh/custom/themes/powerlevel10k checkout $POWERLEVEL10K_COMM
 sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="powerlevel10k\/powerlevel10k"/' /root/.zshrc
 
 # Download powerlevel10k config
-curl -fsSL https://raw.githubusercontent.com/shipurjan/setup-hetzner-website/refs/heads/master/p10k.zsh -o /root/.p10k.zsh
+curl -fsSL https://raw.githubusercontent.com/shipurjan/vps-webhost-init/refs/heads/master/p10k.zsh -o /root/.p10k.zsh
 echo '[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh' >> /root/.zshrc
 
 # Pre-install gitstatusd for powerlevel10k
