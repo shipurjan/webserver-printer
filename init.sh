@@ -224,6 +224,9 @@ git -C /root/.tmux/plugins/tpm checkout $TPM_COMMIT
 
 # Create tmux config with plugins
 cat >/root/.tmux.conf <<'EOF'
+# Use zsh as default shell
+set-option -g default-shell /usr/bin/zsh
+
 # List of plugins
 set -g @plugin 'tmux-plugins/tpm'
 set -g @plugin 'tmux-plugins/tmux-sensible'
@@ -285,4 +288,4 @@ unset DEBIAN_FRONTEND
 
 echo "=== Setup complete ==="
 echo "=== Launching tmux session: $DOMAIN ==="
-( exec </dev/tty; exec <&1; exec tmux new-session -s "$DOMAIN" zsh )
+( exec </dev/tty; exec <&1; exec tmux new-session -s "$DOMAIN" )
