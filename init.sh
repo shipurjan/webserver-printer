@@ -11,7 +11,7 @@ TPM_COMMIT="99469c4a9b1ccf77fade25842dc7bafbc8ce9946"
 echo "=== Choose your preferred editor ==="
 echo "1) vim"
 echo "2) nano"
-read -p "Enter choice [1-2]: " editor_choice
+read -p "Enter choice [1-2]: " editor_choice < /dev/tty
 
 case $editor_choice in
 1) EDITOR="vim" ;;
