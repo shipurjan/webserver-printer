@@ -1,6 +1,6 @@
 # vps-webhost-init
 
-A script to set up a fresh Debian/Ubuntu machine on Hetzner for hosting websites.
+A script to set up a fresh Debian/Ubuntu VPS for hosting dockerized websites.
 
 ## Usage
 
