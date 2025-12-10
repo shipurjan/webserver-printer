@@ -41,7 +41,7 @@ if [ -z "$USER_CONFIG_SOURCE" ]; then
   echo "=== Choose your preferred editor ==="
   echo "1) vim"
   echo "2) nano"
-  read -p "Enter choice [1-2]: " editor_choice < /dev/tty
+  read -p "Enter choice [1-2]: " editor_choice
 
   case $editor_choice in
   1) EDITOR="vim" ;;
@@ -102,7 +102,7 @@ EOF
 else
   # No config provided, let user edit the default
   echo "=== Please fill in your configuration ==="
-  $EDITOR "$CONFIG_FILE" < /dev/tty
+  $EDITOR "$CONFIG_FILE"
 fi
 
 # Source the final configuration
@@ -285,4 +285,4 @@ unset DEBIAN_FRONTEND
 
 echo "=== Setup complete ==="
 echo "=== Launching tmux session: $DOMAIN ==="
-tmux new-session -s "$DOMAIN"
+exec tmux new-session -s "$DOMAIN"
