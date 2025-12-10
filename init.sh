@@ -69,11 +69,16 @@ apt install -y \
   grep \
   sed \
   ripgrep \
-  fd-find
+  fd-find \
+  whois \
+  tree
 
 # Create fd symlink (Debian names it fdfind)
 mkdir -p /root/.local/bin
 ln -s $(which fdfind) /root/.local/bin/fd
+
+# Suppress detached HEAD advice during pinned checkouts
+git config --global advice.detachedHead false
 
 echo "=== Installing Docker ==="
 install -m 0755 -d /etc/apt/keyrings
@@ -118,17 +123,17 @@ sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="powerlevel10k\/powerlevel10k"/' /r
 
 # Download powerlevel10k config
 curl -fsSL https://raw.githubusercontent.com/shipurjan/vps-webhost-init/refs/heads/master/p10k.zsh -o /root/.p10k.zsh
-echo '[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh' >> /root/.zshrc
+echo '[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh' >>/root/.zshrc
 
 # Pre-install gitstatusd for powerlevel10k
 /root/.oh-my-zsh/custom/themes/powerlevel10k/gitstatus/install
 
 # Set default editor and PATH
-echo "export EDITOR=$EDITOR" >> /root/.zshrc
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> /root/.zshrc
+echo "export EDITOR=$EDITOR" >>/root/.zshrc
+echo 'export PATH="$HOME/.local/bin:$PATH"' >>/root/.zshrc
 
 # Add useful settings and aliases
-cat >> /root/.zshrc << 'EOF'
+cat >>/root/.zshrc <<'EOF'
 
 # History timestamps
 HIST_STAMPS="yyyy-mm-dd"
@@ -154,7 +159,7 @@ git -C /root/.tmux/plugins/tpm fetch --depth=1 origin $TPM_COMMIT
 git -C /root/.tmux/plugins/tpm checkout $TPM_COMMIT
 
 # Create tmux config with plugins
-cat > /root/.tmux.conf << 'EOF'
+cat >/root/.tmux.conf <<'EOF'
 # List of plugins
 set -g @plugin 'tmux-plugins/tpm'
 set -g @plugin 'tmux-plugins/tmux-sensible'
@@ -183,10 +188,26 @@ find "/root/$DOMAIN" -type f -exec sed -i \
   -e "s|{{%INIT_TEMPLATE%:ADMIN_PASSWORD}}|$ADMIN_PASSWORD|g" \
   {} \;
 
-# Initialize fresh git repo
+# Generate bcrypt password hash for Caddy basic_auth
+ADMIN_PASSWORD_HASH=$(mkpasswd -m bcrypt -R 14 "$ADMIN_PASSWORD")
+
+# Create .env file for docker-compose
+cat >"/root/$DOMAIN/docker/.env" <<EOF
+LOGS_USERNAME='$ADMIN_LOGIN'
+LOGS_PASSWORD_HASH='$ADMIN_PASSWORD_HASH'
+EOF
+
+# Initialize fresh git repo with initial commit
 cd "/root/$DOMAIN"
-git init
+git config --global user.email "$EMAIL"
+git config --global user.name "vps-webhost-init"
+git init -b master
+git add .
+git commit -m "init"
 cd /root
+
+# Restore default git advice
+git config --global --unset advice.detachedHead
 
 # Cleanup
 rm -rf /tmp/vps-webhost-init

@@ -1,0 +1,164 @@
+{
+	order handle before root
+}
+
+# Main site
+{{%INIT_TEMPLATE%:DOMAIN}} {
+	log access-file {
+		output file /var/log/caddy/access.log
+	}
+	log access-stdout {
+		output stdout
+	}
+
+	@badbots {
+		header User-Agent *GPTBot*
+		header User-Agent *Claude-Web*
+		header User-Agent *CCBot*
+		header User-Agent *bytespider*
+		header User-Agent *PerplexityBot*
+	}
+	respond @badbots 403
+
+	handle /honeypot {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /wp-admin* {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /wp-content* {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /wp-includes* {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /wordpress* {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /wp-login.php {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /xmlrpc.php {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /admin* {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /administrator* {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /manager* {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /phpmyadmin* {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /phpMyAdmin* {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /pma* {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /cpanel* {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /.env* {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /config* {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /.git* {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /.htaccess {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /backup* {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /backups* {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /db* {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /database* {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /dump* {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /api/v1/admin* {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /api/admin* {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /rest/api* {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /shell* {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /webshell* {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /c99.php {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+	handle /r57.php {
+		header X-Honeypot "trapped"
+		respond "HONEYPOT TRIGGERED" 403
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		X-XSS-Protection "1; mode=block"
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+
+	# Reverse proxy to frontend container
+	reverse_proxy frontend:3000
+}
+
+www.{{%INIT_TEMPLATE%:DOMAIN}} {
+	redir https://{{%INIT_TEMPLATE%:DOMAIN}}{uri} permanent
+}
+
+logs.{{%INIT_TEMPLATE%:DOMAIN}} {
+	basic_auth {
+		{$LOGS_USERNAME} {$LOGS_PASSWORD_HASH}
+	}
+	reverse_proxy dozzle:8080
+}
