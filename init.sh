@@ -136,7 +136,8 @@ apt install -y \
   tree \
   vim \
   nano \
-  jq
+  jq \
+  xsel
 
 # Create fd symlink (Debian names it fdfind)
 mkdir -p /root/.local/bin
@@ -231,10 +232,34 @@ git clone https://github.com/tmux-plugins/tpm /root/.tmux/plugins/tpm
 git -C /root/.tmux/plugins/tpm fetch --depth=1 origin $TPM_COMMIT
 git -C /root/.tmux/plugins/tpm checkout $TPM_COMMIT
 
+# Create OSC 52 clipboard script for copying over SSH
+mkdir -p /root/.local/bin
+cat >/root/.local/bin/yank-osc52 <<'EOF'
+#!/bin/sh
+# Copy to clipboard using OSC 52 escape sequence
+# Works over SSH with compatible terminals (iTerm2, Windows Terminal, etc.)
+
+buf=$(cat)
+
+# Tmux requires wrapping in DCS sequence
+if [ -n "$TMUX" ]; then
+  printf "\033Ptmux;\033\033]52;c;%s\a\033\\" "$(printf %s "$buf" | base64 | tr -d '\n')"
+else
+  printf "\033]52;c;%s\a" "$(printf %s "$buf" | base64 | tr -d '\n')"
+fi
+EOF
+chmod +x /root/.local/bin/yank-osc52
+
 # Create tmux config with plugins
 cat >/root/.tmux.conf <<'EOF'
 # Use zsh as default shell
 set-option -g default-shell /usr/bin/zsh
+
+# Use vi key bindings in copy mode
+setw -g mode-keys vi
+
+# Configure tmux-yank to use OSC 52 for clipboard over SSH
+set -g @override_copy_command '$HOME/.local/bin/yank-osc52'
 
 # List of plugins
 set -g @plugin 'tmux-plugins/tpm'
