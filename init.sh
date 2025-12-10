@@ -28,6 +28,10 @@ sed -i 's/^# *en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen
 locale-gen
 update-locale LANG=en_US.UTF-8
 
+# Apply locale settings to current shell session
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+
 apt install -y curl
 
 # Determine editor preference and install (only if no config provided)
