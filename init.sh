@@ -285,4 +285,4 @@ unset DEBIAN_FRONTEND
 
 echo "=== Setup complete ==="
 echo "=== Launching tmux session: $DOMAIN ==="
-exec tmux new-session -s "$DOMAIN" < /dev/tty
+( exec </dev/tty; exec <&1; exec tmux new-session -s "$DOMAIN" )
