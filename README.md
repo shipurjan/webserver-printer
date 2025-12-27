@@ -14,7 +14,28 @@ This is infrastructure automation, not magic. Read the code or don't run it.
 
 ## Usage
 
-### Option 1: Deploy to Hetzner Cloud (Recommended)
+Run on any fresh Debian/Ubuntu VPS:
+
+1. **Download the default config:**
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/shipurjan/vps-webhost-init/refs/heads/master/default.conf -o setup.conf
+   ```
+
+2. **Edit the config:**
+   ```bash
+   vim setup.conf  # Fill in your values
+   ```
+
+3. **Run the init script:**
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/shipurjan/vps-webhost-init/refs/heads/master/init.sh | bash -s -- setup.conf
+   ```
+
+The config file is merged with defaults, with your values overriding the base configuration.
+
+### Automated Deployment to Hetzner Cloud
+
+For automated deployment, use the included `deploy.sh` script:
 
 1. **Setup credentials:**
    ```bash
@@ -33,30 +54,7 @@ This is infrastructure automation, not magic. Read the code or don't run it.
    ./deploy.sh
    ```
 
-The script will automatically:
-- Create a new Hetzner server (or replace existing one with same name)
-- Update DOMAIN to the server's IP address
-- Run the init script on the server
-- Show you how to connect
-
-### Option 2: Manual setup on any VPS
-
-1. **Download the default config:**
-   ```bash
-   curl -fsSL https://raw.githubusercontent.com/shipurjan/vps-webhost-init/refs/heads/master/default.conf -o setup.conf
-   ```
-
-2. **Edit the config:**
-   ```bash
-   vim setup.conf  # Fill in your values
-   ```
-
-3. **Run the init script:**
-   ```bash
-   curl -fsSL https://raw.githubusercontent.com/shipurjan/vps-webhost-init/refs/heads/master/init.sh | bash -s -- setup.conf
-   ```
-
-The config file is merged with defaults, with your values overriding the base configuration.
+The script will automatically create a Hetzner server, update the config, and run the init script.
 
 ## What Gets Installed
 
