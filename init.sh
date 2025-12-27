@@ -249,7 +249,7 @@ set -g @plugin 'tmux-plugins/tmux-copycat'
 
 # Fix for Windows Terminal escape code issue
 # Must be set after tmux-sensible (which sets it to 0)
-set -s escape-time 15
+set -s escape-time 50
 
 # Initialize TMUX plugin manager (keep this line at the very bottom of tmux.conf)
 run '~/.tmux/plugins/tpm/tpm'
@@ -423,7 +423,7 @@ if ! tmux has-session -t "$TMUX_SESSION" 2>/dev/null; then
 fi
 
 # Attach if running interactively
-if [ -e /dev/tty ]; then
+if [ -t 0 ]; then
   echo "Attaching to tmux session..."
   exec </dev/tty
   exec tmux attach-session -t "$TMUX_SESSION"
