@@ -1,10 +1,10 @@
 #!/bin/bash
 # Container health monitoring script
 # Sends Telegram alert when containers become unhealthy
-# Run via cron: */5 * * * * /root/{{%INIT_TEMPLATE%:DOMAIN}}/scripts/health-check.sh
+# Run via cron: */5 * * * * /root/__#TEMPLATE#:DOMAIN__/scripts/health-check.sh
 
 STATE_FILE="/tmp/container-health-state"
-DOMAIN="{{%INIT_TEMPLATE%:DOMAIN}}"
+DOMAIN="__#TEMPLATE#:DOMAIN__"
 SCRIPT_DIR="$(dirname "$0")"
 
 # Get unhealthy containers

@@ -2,9 +2,9 @@
 # fail2ban Telegram notification script
 # Called by fail2ban when an IP is banned
 
-BOT_TOKEN="{{%INIT_TEMPLATE%:TELEGRAM_BOT_TOKEN}}"
-CHAT_ID="{{%INIT_TEMPLATE%:TELEGRAM_CHAT_ID}}"
-DOMAIN="{{%INIT_TEMPLATE%:DOMAIN}}"
+BOT_TOKEN="__#TEMPLATE#:TELEGRAM_BOT_TOKEN__"
+CHAT_ID="__#TEMPLATE#:TELEGRAM_CHAT_ID__"
+DOMAIN="__#TEMPLATE#:DOMAIN__"
 
 # Exit if Telegram not configured
 if [ -z "$BOT_TOKEN" ] || [ -z "$CHAT_ID" ]; then

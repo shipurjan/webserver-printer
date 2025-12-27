@@ -3,13 +3,13 @@
 # Or: (crontab -l 2>/dev/null; cat crontab.example) | crontab -
 
 # Container health check - every 5 minutes
-*/5 * * * * /root/{{%INIT_TEMPLATE%:DOMAIN}}/scripts/health-check.sh
+*/5 * * * * /root/__#TEMPLATE#:DOMAIN__/scripts/health-check.sh
 
 # Security updates check - weekly on Sunday at 9am
-0 9 * * 0 /root/{{%INIT_TEMPLATE%:DOMAIN}}/scripts/security-updates-check.sh
+0 9 * * 0 /root/__#TEMPLATE#:DOMAIN__/scripts/security-updates-check.sh
 
 # Disk space check - daily at 8am
-0 8 * * * /root/{{%INIT_TEMPLATE%:DOMAIN}}/scripts/disk-space-check.sh
+0 8 * * * /root/__#TEMPLATE#:DOMAIN__/scripts/disk-space-check.sh
 
 # Docker cleanup - weekly on Sunday at 3am
 # Removes unused containers, networks, images, and volumes

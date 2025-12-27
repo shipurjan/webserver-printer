@@ -3,8 +3,8 @@
 # Usage: echo "message" | telegram-notify.sh "Title"
 # Or: telegram-notify.sh "Title" "Message"
 
-BOT_TOKEN="{{%INIT_TEMPLATE%:TELEGRAM_BOT_TOKEN}}"
-CHAT_ID="{{%INIT_TEMPLATE%:TELEGRAM_CHAT_ID}}"
+BOT_TOKEN="__#TEMPLATE#:TELEGRAM_BOT_TOKEN__"
+CHAT_ID="__#TEMPLATE#:TELEGRAM_CHAT_ID__"
 
 # Exit if Telegram not configured
 if [ -z "$BOT_TOKEN" ] || [ -z "$CHAT_ID" ]; then

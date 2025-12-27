@@ -1,10 +1,10 @@
 #!/bin/bash
 # Disk space monitoring script
 # Sends Telegram alert when disk usage exceeds threshold
-# Run via cron: 0 8 * * * /root/{{%INIT_TEMPLATE%:DOMAIN}}/scripts/disk-space-check.sh
+# Run via cron: 0 8 * * * /root/__#TEMPLATE#:DOMAIN__/scripts/disk-space-check.sh
 
 THRESHOLD=80
-DOMAIN="{{%INIT_TEMPLATE%:DOMAIN}}"
+DOMAIN="__#TEMPLATE#:DOMAIN__"
 SCRIPT_DIR="$(dirname "$0")"
 
 # Get current disk usage percentage

@@ -1,9 +1,9 @@
 #!/bin/bash
 # Security updates checker
 # Sends weekly Telegram notification if security updates are available
-# Run via cron: 0 9 * * 0 /root/{{%INIT_TEMPLATE%:DOMAIN}}/scripts/security-updates-check.sh
+# Run via cron: 0 9 * * 0 /root/__#TEMPLATE#:DOMAIN__/scripts/security-updates-check.sh
 
-DOMAIN="{{%INIT_TEMPLATE%:DOMAIN}}"
+DOMAIN="__#TEMPLATE#:DOMAIN__"
 SCRIPT_DIR="$(dirname "$0")"
 
 # Check for security updates

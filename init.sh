@@ -289,8 +289,9 @@ EOF
 
 echo "=== Configuring fail2ban for honeypot protection ==="
 
-# Create Caddy log directory
+# Create Caddy log directory and file (fail2ban needs file to exist)
 mkdir -p /var/log/caddy
+touch /var/log/caddy/access.log
 
 # Create fail2ban filter for Caddy honeypots
 cat >/etc/fail2ban/filter.d/caddy-honeypot.conf <<'EOF'
