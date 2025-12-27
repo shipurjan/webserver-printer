@@ -14,8 +14,9 @@ TPM_COMMIT="99469c4a9b1ccf77fade25842dc7bafbc8ce9946"
 # Default config URL
 DEFAULT_CONFIG_URL="https://raw.githubusercontent.com/shipurjan/vps-webhost-init/refs/heads/master/default.conf"
 
-# Parse command line argument
+# Parse command line arguments
 USER_CONFIG_SOURCE="$1"
+BRANCH="${2:-master}"
 
 # Require config file
 if [ -z "$USER_CONFIG_SOURCE" ]; then
@@ -45,8 +46,8 @@ apt install -y curl
 
 # Load default configuration
 CONFIG_FILE="/root/setup-config.sh"
-echo "=== Loading default configuration ==="
-curl -fsSL "$DEFAULT_CONFIG_URL" -o "$CONFIG_FILE"
+echo "=== Loading default configuration (branch: $BRANCH) ==="
+curl -fsSL "https://raw.githubusercontent.com/shipurjan/vps-webhost-init/refs/heads/$BRANCH/default.conf" -o "$CONFIG_FILE"
 
 # Load user configuration
 echo "=== Loading user configuration ==="
@@ -165,7 +166,7 @@ git -C /root/.oh-my-zsh/custom/themes/powerlevel10k checkout $POWERLEVEL10K_COMM
 sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="powerlevel10k\/powerlevel10k"/' /root/.zshrc
 
 # Download powerlevel10k config
-curl -fsSL https://raw.githubusercontent.com/shipurjan/vps-webhost-init/refs/heads/master/p10k.zsh -o /root/.p10k.zsh
+curl -fsSL "https://raw.githubusercontent.com/shipurjan/vps-webhost-init/refs/heads/$BRANCH/p10k.zsh" -o /root/.p10k.zsh
 echo '[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh' >>/root/.zshrc
 
 # Pre-install gitstatusd for powerlevel10k
@@ -259,7 +260,8 @@ EOF
 /root/.tmux/plugins/tpm/bin/install_plugins
 
 # Clone repo and scaffold project from template
-git clone --depth=1 https://github.com/shipurjan/vps-webhost-init.git /tmp/vps-webhost-init
+echo "Cloning template from GitHub (branch: $BRANCH)"
+git clone --depth=1 --branch "$BRANCH" https://github.com/shipurjan/vps-webhost-init.git /tmp/vps-webhost-init
 cp -r /tmp/vps-webhost-init/template "/root/$DOMAIN"
 
 # Replace placeholders with config values

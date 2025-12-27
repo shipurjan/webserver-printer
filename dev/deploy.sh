@@ -20,8 +20,24 @@ LOCATION="fsn1"          # Falkenstein, Germany
 IMAGE="debian-13"        # Debian 13
 SERVER_NAME="vps-webhost-init"
 
+# Parse --branch parameter (default: master)
+BRANCH="master"
+USER_CONFIG_ARG=""
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --branch)
+      BRANCH="$2"
+      shift 2
+      ;;
+    *)
+      [ -z "$USER_CONFIG_ARG" ] && USER_CONFIG_ARG="$1"
+      shift
+      ;;
+  esac
+done
+
 # Use command line arg if provided, otherwise use deploy.conf from dev/
-USER_CONFIG="${1:-$SCRIPT_DIR/deploy.conf}"
+USER_CONFIG="${USER_CONFIG_ARG:-$SCRIPT_DIR/deploy.conf}"
 
 if [ ! -f "$USER_CONFIG" ]; then
   echo "Error: Config not found: $USER_CONFIG"
@@ -147,8 +163,8 @@ echo "Copying files..."
 scp -q $SSH_OPTS[@] "$ROOT_DIR/init.sh" "$USER_CONFIG" root@$SERVER_IPV4:/root/
 
 # Run init
-echo "Running init script..."
-ssh $SSH_OPTS[@] root@$SERVER_IPV4 "bash /root/init.sh /root/$(basename "$USER_CONFIG")"
+echo "Running init script (branch: $BRANCH)..."
+ssh $SSH_OPTS[@] root@$SERVER_IPV4 "bash /root/init.sh /root/$(basename "$USER_CONFIG") $BRANCH"
 
 echo ""
 echo "Deployment complete!"
