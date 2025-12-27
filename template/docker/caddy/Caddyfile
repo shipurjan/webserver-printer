@@ -2,8 +2,8 @@
 	order handle before root
 }
 
-# Main site (HTTP only - disable HTTPS for testing)
-http://__#TEMPLATE#:DOMAIN__ {
+# Main site with automatic HTTPS
+__#TEMPLATE#:DOMAIN__ {
 	log access-file {
 		output file /var/log/caddy/access.log
 	}
@@ -151,16 +151,27 @@ handle {
 	}
 }
 
-header {
-	X-Content-Type-Options nosniff
-	X-Frame-Options DENY
-	X-XSS-Protection "1; mode=block"
-	Referrer-Policy strict-origin-when-cross-origin
-}
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		X-XSS-Protection "1; mode=block"
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+
+	handle_errors {
+		@404 expression `{err.status_code} == 404`
+		handle @404 {
+			rewrite * /404.html
+			file_server {
+				root /srv
+				precompressed br zstd gzip
+			}
+		}
+	}
 }
 
-http://www.__#TEMPLATE#:DOMAIN__ {
-	redir http://__#TEMPLATE#:DOMAIN__{uri} permanent
+www.__#TEMPLATE#:DOMAIN__ {
+	redir https://__#TEMPLATE#:DOMAIN__{uri} permanent
 }
 
 logs.__#TEMPLATE#:DOMAIN__ {
