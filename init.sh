@@ -17,8 +17,13 @@ DEFAULT_CONFIG_URL="https://raw.githubusercontent.com/shipurjan/vps-webhost-init
 # Parse command line argument
 USER_CONFIG_SOURCE="$1"
 
-# Install curl first (needed for downloading config)
-echo "=== Installing curl ==="
+# Require config file
+if [ -z "$USER_CONFIG_SOURCE" ]; then
+  echo "Error: Config file path is required"
+  echo "Usage: $0 <config-file>"
+  exit 1
+fi
+
 apt update
 
 # Configure locales early to suppress perl warnings
@@ -34,61 +39,39 @@ export LC_ALL=en_US.UTF-8
 locale-gen
 update-locale LANG=en_US.UTF-8
 
+# Install curl (needed for downloading config)
+echo "=== Installing curl ==="
 apt install -y curl
-
-# Determine editor preference and install (only if no config provided)
-if [ -z "$USER_CONFIG_SOURCE" ]; then
-  echo "=== Choose your preferred editor ==="
-  echo "1) vim"
-  echo "2) nano"
-  read -p "Enter choice [1-2]: " editor_choice < /dev/tty
-
-  case $editor_choice in
-  1) EDITOR="vim" ;;
-  2) EDITOR="nano" ;;
-  *)
-    echo "Invalid choice"
-    exit 1
-    ;;
-  esac
-
-  echo "=== Installing $EDITOR ==="
-  apt install -y $EDITOR
-else
-  # Default to vim if config is provided
-  EDITOR="vim"
-fi
 
 # Load default configuration
 CONFIG_FILE="/root/setup-config.sh"
 echo "=== Loading default configuration ==="
 curl -fsSL "$DEFAULT_CONFIG_URL" -o "$CONFIG_FILE"
 
-# If user provided a config source, merge it
-if [ -n "$USER_CONFIG_SOURCE" ]; then
-  echo "=== Loading user configuration ==="
-  USER_CONFIG_FILE="/root/user-config.sh"
+# Load user configuration
+echo "=== Loading user configuration ==="
+USER_CONFIG_FILE="/root/user-config.sh"
 
-  # Check if it's a URL or file path
-  if [[ "$USER_CONFIG_SOURCE" =~ ^https?:// ]]; then
-    # It's a URL, fetch it
-    echo "Fetching configuration from URL: $USER_CONFIG_SOURCE"
-    curl -fsSL "$USER_CONFIG_SOURCE" -o "$USER_CONFIG_FILE"
-  elif [ -f "$USER_CONFIG_SOURCE" ]; then
-    # It's a file, copy it
-    echo "Reading configuration from file: $USER_CONFIG_SOURCE"
-    cp "$USER_CONFIG_SOURCE" "$USER_CONFIG_FILE"
-  else
-    echo "Error: Config source not found: $USER_CONFIG_SOURCE"
-    exit 1
-  fi
+# Check if it's a URL or file path
+if [[ "$USER_CONFIG_SOURCE" =~ ^https?:// ]]; then
+  # It's a URL, fetch it
+  echo "Fetching configuration from URL: $USER_CONFIG_SOURCE"
+  curl -fsSL "$USER_CONFIG_SOURCE" -o "$USER_CONFIG_FILE"
+elif [ -f "$USER_CONFIG_SOURCE" ]; then
+  # It's a file, copy it
+  echo "Reading configuration from file: $USER_CONFIG_SOURCE"
+  cp "$USER_CONFIG_SOURCE" "$USER_CONFIG_FILE"
+else
+  echo "Error: Config source not found: $USER_CONFIG_SOURCE"
+  exit 1
+fi
 
-  # Source both files to merge (user config overwrites defaults)
-  source "$CONFIG_FILE"
-  source "$USER_CONFIG_FILE"
+# Source both files to merge (user config overwrites defaults)
+source "$CONFIG_FILE"
+source "$USER_CONFIG_FILE"
 
-  # Write merged config back
-  cat >"$CONFIG_FILE" <<EOF
+# Write merged config back
+cat >"$CONFIG_FILE" <<EOF
 # Merged configuration (defaults + user overrides)
 
 DOMAIN="$DOMAIN"
@@ -98,12 +81,7 @@ ADMIN_LOGIN="$ADMIN_LOGIN"
 ADMIN_PASSWORD="$ADMIN_PASSWORD"
 EOF
 
-  rm -f "$USER_CONFIG_FILE"
-else
-  # No config provided, let user edit the default
-  echo "=== Please fill in your configuration ==="
-  $EDITOR "$CONFIG_FILE" < /dev/tty
-fi
+rm -f "$USER_CONFIG_FILE"
 
 # Source the final configuration
 source "$CONFIG_FILE"
@@ -135,7 +113,6 @@ apt install -y \
   whois \
   tree \
   vim \
-  nano \
   jq \
   xsel
 
@@ -195,7 +172,7 @@ echo '[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh' >>/root/.zshrc
 /root/.oh-my-zsh/custom/themes/powerlevel10k/gitstatus/install
 
 # Set default editor and PATH
-echo "export EDITOR=$EDITOR" >>/root/.zshrc
+echo "export EDITOR=vim" >>/root/.zshrc
 echo 'export PATH="$HOME/.local/bin:$PATH"' >>/root/.zshrc
 
 # Add useful settings and aliases
@@ -269,6 +246,10 @@ set -g @plugin 'tmux-plugins/tmux-resurrect'
 set -g @plugin 'tmux-plugins/tmux-continuum'
 set -g @plugin 'tmux-plugins/tmux-pain-control'
 set -g @plugin 'tmux-plugins/tmux-copycat'
+
+# Fix for Windows Terminal escape code issue
+# Must be set after tmux-sensible (which sets it to 0)
+set -s escape-time 15
 
 # Initialize TMUX plugin manager (keep this line at the very bottom of tmux.conf)
 run '~/.tmux/plugins/tpm/tpm'
@@ -423,26 +404,29 @@ echo "=== Setup complete ==="
 
 # Sanitize domain name for tmux session (only alphanumeric and underscore allowed)
 TMUX_SESSION=$(echo "$DOMAIN" | sed 's/[^a-zA-Z0-9_]/_/g')
-echo "=== Launching tmux session: $TMUX_SESSION ==="
+echo "=== Creating tmux session: $TMUX_SESSION ==="
 
-# Check if session already exists
-if tmux has-session -t "$TMUX_SESSION" 2>/dev/null; then
-  echo "Tmux session '$TMUX_SESSION' already exists. Attaching..."
-  ( exec </dev/tty; exec <&1; exec tmux attach-session -t "$TMUX_SESSION" )
-  exit 0
+# Create detached session in project directory (skip if exists)
+if ! tmux has-session -t "$TMUX_SESSION" 2>/dev/null; then
+  tmux new-session -d -s "$TMUX_SESSION" -c "/root/$DOMAIN"
+
+  # Split window vertically (left 70%, right 30%)
+  tmux split-window -h -t "$TMUX_SESSION:0" -p 30
+
+  # Select left pane (pane 0) - main console
+  tmux select-pane -t "$TMUX_SESSION:0.0"
+
+  # Send lazydocker command to right pane (pane 1)
+  tmux send-keys -t "$TMUX_SESSION:0.1" 'lazydocker' C-m
+
+  echo "Tmux session created."
 fi
 
-# Create detached session in project directory
-tmux new-session -d -s "$TMUX_SESSION" -c "/root/$DOMAIN"
-
-# Split window vertically (left 70%, right 30%)
-tmux split-window -h -t "$TMUX_SESSION:0" -p 30
-
-# Select left pane (pane 0) - main console
-tmux select-pane -t "$TMUX_SESSION:0.0"
-
-# Send lazydocker command to right pane (pane 1)
-tmux send-keys -t "$TMUX_SESSION:0.1" 'lazydocker' C-m
-
-# Attach to session with proper terminal handling
-( exec </dev/tty; exec <&1; exec tmux attach-session -t "$TMUX_SESSION" )
+# Attach if running interactively
+if [ -e /dev/tty ]; then
+  echo "Attaching to tmux session..."
+  exec </dev/tty
+  exec tmux attach-session -t "$TMUX_SESSION"
+else
+  echo "Non-interactive mode. Connect via SSH to auto-attach."
+fi

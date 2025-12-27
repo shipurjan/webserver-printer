@@ -1,0 +1,10 @@
+# Environment files with secrets
+.env
+deploy.conf
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
