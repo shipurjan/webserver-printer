@@ -155,7 +155,7 @@ handle /_astro/* {
 # Cache favicon for 1 week
 handle /favicon.svg {
 	header Cache-Control "public, max-age=604800"
-	header Accept-Ranges "none"
+	header -Accept-Ranges
 	header Content-Type "image/svg+xml"
 	root * /srv
 	encode zstd gzip
