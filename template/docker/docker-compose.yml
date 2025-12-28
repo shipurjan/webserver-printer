@@ -50,7 +50,7 @@ services:
 
   # Dozzle - Log viewer
   dozzle:
-    image: amir20/dozzle:v8.14.10
+    image: amir20/dozzle:v8.14.12
     container_name: dozzle
     restart: unless-stopped
     volumes:
