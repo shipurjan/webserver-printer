@@ -162,7 +162,7 @@ cat >/etc/ssh/sshd_config.d/99-hardening.conf <<EOF
 PasswordAuthentication no
 PubkeyAuthentication yes
 ChallengeResponseAuthentication no
-UsePAM no
+UsePAM yes
 
 # Root login with keys only
 PermitRootLogin prohibit-password
