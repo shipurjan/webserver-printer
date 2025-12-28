@@ -101,12 +101,16 @@ ADMIN_PASSWORD="$ADMIN_PASSWORD"
 TELEGRAM_BOT_TOKEN="$TELEGRAM_BOT_TOKEN"
 TELEGRAM_CHAT_ID="$TELEGRAM_CHAT_ID"
 SSH_PORT="$SSH_PORT"
+GITHUB_REPO_URL="$GITHUB_REPO_URL"
 EOF
 
 rm -f "$USER_CONFIG_FILE"
 
 # Source the final configuration
 source "$CONFIG_FILE"
+
+# Sanitize domain for use in file names and SSH config
+DOMAIN_SANITIZED=$(echo "$DOMAIN" | sed 's/[^a-zA-Z0-9_]/_/g')
 
 echo "=== Configuration loaded ==="
 echo "Domain: $DOMAIN"
@@ -443,6 +447,151 @@ git -c user.email='<>' -c user.name='vps-webhost-init' commit -m "init"
 # Set git identity for future commits
 git config --global user.email "$EMAIL"
 git config --global user.name "$FULL_NAME"
+
+# GitHub integration (optional)
+if [ -n "$GITHUB_REPO_URL" ]; then
+  echo "=== Setting up GitHub integration ==="
+
+  # Generate deploy keys (RW and RO)
+  echo "  Generating deploy keys..."
+  mkdir -p /root/.ssh
+  chmod 700 /root/.ssh
+
+  ssh-keygen -t ed25519 -f /root/.ssh/${DOMAIN_SANITIZED}_deploy_rw -N "" -C "deploy-rw@$DOMAIN"
+  ssh-keygen -t ed25519 -f /root/.ssh/${DOMAIN_SANITIZED}_deploy_ro -N "" -C "deploy-ro@$DOMAIN"
+
+  # Set up SSH config with aliases
+  cat >> /root/.ssh/config <<EOF
+
+# GitHub deploy keys for $DOMAIN
+Host github.com-${DOMAIN_SANITIZED}-rw
+  HostName github.com
+  User git
+  IdentityFile /root/.ssh/${DOMAIN_SANITIZED}_deploy_rw
+  IdentitiesOnly yes
+  StrictHostKeyChecking accept-new
+
+Host github.com-${DOMAIN_SANITIZED}-ro
+  HostName github.com
+  User git
+  IdentityFile /root/.ssh/${DOMAIN_SANITIZED}_deploy_ro
+  IdentitiesOnly yes
+  StrictHostKeyChecking accept-new
+EOF
+
+  # Extract repo path from URL (git@github.com:user/repo.git → user/repo)
+  REPO_PATH=$(echo "$GITHUB_REPO_URL" | sed 's/.*:\(.*\)\.git/\1/')
+
+  # Interactive prompt for user to add deploy keys
+  echo ""
+  echo "==================================================================="
+  echo "  ADD DEPLOY KEYS TO GITHUB"
+  echo "==================================================================="
+  echo ""
+  echo "Go to: https://github.com/$REPO_PATH/settings/keys"
+  echo ""
+  echo "1. Click 'Add deploy key'"
+  echo "   Title: deploy-rw@$DOMAIN"
+  echo "   Key:"
+  echo ""
+  cat /root/.ssh/${DOMAIN_SANITIZED}_deploy_rw.pub
+  echo ""
+  echo "   ☑ Check 'Allow write access'"
+  echo ""
+  echo "2. Click 'Add deploy key' again"
+  echo "   Title: deploy-ro@$DOMAIN"
+  echo "   Key:"
+  echo ""
+  cat /root/.ssh/${DOMAIN_SANITIZED}_deploy_ro.pub
+  echo ""
+  echo "   ☐ Leave 'Allow write access' UNCHECKED"
+  echo ""
+  echo "==================================================================="
+  echo ""
+  read -p "Press ENTER when you've added both deploy keys to GitHub..."
+
+  # Push using RW key
+  echo ""
+  echo "=== Pushing to GitHub ==="
+  git remote add origin "git@github.com-${DOMAIN_SANITIZED}-rw:${REPO_PATH}.git"
+
+  if ! git push -u origin master 2>&1 | tee /tmp/git_push.log; then
+    echo "  ERROR: Git push failed. Check /tmp/git_push.log for details"
+    echo "  Common issues:"
+    echo "  - Deploy key not added to GitHub"
+    echo "  - Repository doesn't exist"
+    echo "  - Wrong repository URL"
+    exit 1
+  fi
+
+  # Switch remote to RO key
+  echo "  Switching to read-only deploy key..."
+  git remote set-url origin "git@github.com-${DOMAIN_SANITIZED}-ro:${REPO_PATH}.git"
+
+  # Test RO key
+  if ! git ls-remote origin &>/dev/null; then
+    echo "  ERROR: Read-only deploy key not working"
+    echo "  Check that you added the RO key to GitHub"
+    exit 1
+  fi
+  echo "  ✓ Read-only deploy key working"
+
+  # Delete RW key
+  rm -f /root/.ssh/${DOMAIN_SANITIZED}_deploy_rw /root/.ssh/${DOMAIN_SANITIZED}_deploy_rw.pub
+  echo "  ✓ Read-write key deleted from server"
+
+  # Remove RW host from SSH config
+  sed -i "/Host github.com-${DOMAIN_SANITIZED}-rw/,/^$/d" /root/.ssh/config
+  echo "  ✓ Read-write SSH config removed"
+
+  # Generate SSH key for GitHub Actions
+  echo "  Generating SSH key for GitHub Actions..."
+  ssh-keygen -t ed25519 -f /root/.ssh/github_actions_key -N "" -C "github-actions@$DOMAIN"
+
+  # Add GHA public key to authorized_keys
+  cat /root/.ssh/github_actions_key.pub >> /root/.ssh/authorized_keys
+  echo "  ✓ GitHub Actions public key added to authorized_keys"
+
+  # Print final instructions
+  echo ""
+  echo "==================================================================="
+  echo "  GitHub Repository Setup Complete!"
+  echo "==================================================================="
+  echo ""
+  echo "Repository: $GITHUB_REPO_URL"
+  echo "Branch: master"
+  echo ""
+  echo "NEXT STEPS:"
+  echo ""
+  echo "1. Remove the READ-WRITE deploy key from GitHub:"
+  echo "   https://github.com/$REPO_PATH/settings/keys"
+  echo "   (Delete: deploy-rw@$DOMAIN)"
+  echo "   (Keep: deploy-ro@$DOMAIN)"
+  echo ""
+  echo "2. Add these secrets to your GitHub repository:"
+  echo "   https://github.com/$REPO_PATH/settings/secrets/actions"
+  echo ""
+  echo "   VPS_HOST: $DOMAIN"
+  echo "   SSH_PORT: $SSH_PORT"
+  echo "   VPS_SSH_KEY:"
+  cat /root/.ssh/github_actions_key
+  echo ""
+  echo "==================================================================="
+  echo ""
+  echo "IMPORTANT: Add the secrets above to your GitHub repository now."
+  echo "Do NOT store the VPS_SSH_KEY anywhere else - only in GitHub secrets."
+  echo ""
+  read -p "Press ENTER after you've added the secrets to GitHub Actions..."
+
+  # Delete GHA private key from server
+  rm -f /root/.ssh/github_actions_key
+  echo ""
+  echo "  ✓ Setup complete!"
+  echo "  Private key removed from server. Now stored only in GitHub Actions."
+  echo "  This is secure and intended - GitHub Actions will use it to deploy."
+  echo ""
+fi
+
 cd /root
 
 # Restore default git advice
@@ -491,8 +640,8 @@ ssh -p $SSH_PORT root@$DOMAIN"
     -d "text=${MESSAGE}" > /dev/null
 fi
 
-# Sanitize domain name for tmux session (only alphanumeric and underscore allowed)
-TMUX_SESSION=$(echo "$DOMAIN" | sed 's/[^a-zA-Z0-9_]/_/g')
+# Use sanitized domain for tmux session name
+TMUX_SESSION="$DOMAIN_SANITIZED"
 echo "=== Creating tmux session: $TMUX_SESSION ==="
 
 # Create detached session in project directory (skip if exists)

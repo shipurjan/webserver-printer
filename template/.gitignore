@@ -1,0 +1,10 @@
+# Environment files
+.env*
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.swp
+.DS_Store
