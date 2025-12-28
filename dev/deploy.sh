@@ -20,14 +20,19 @@ LOCATION="fsn1"          # Falkenstein, Germany
 IMAGE="debian-13"        # Debian 13
 SERVER_NAME="vps-webhost-init"
 
-# Parse --branch parameter (default: master)
+# Parse command line parameters
 BRANCH="master"
+STAGING_MODE=false
 USER_CONFIG_ARG=""
 while [[ $# -gt 0 ]]; do
   case $1 in
     --branch)
       BRANCH="$2"
       shift 2
+      ;;
+    --staging)
+      STAGING_MODE=true
+      shift
       ;;
     *)
       [ -z "$USER_CONFIG_ARG" ] && USER_CONFIG_ARG="$1"
@@ -163,8 +168,13 @@ echo "Copying files..."
 scp -q $SSH_OPTS[@] "$ROOT_DIR/init.sh" "$USER_CONFIG" root@$SERVER_IPV4:/root/
 
 # Run init
-echo "Running init script (branch: $BRANCH)..."
-ssh $SSH_OPTS[@] root@$SERVER_IPV4 "bash /root/init.sh /root/$(basename "$USER_CONFIG") $BRANCH"
+if [ "$STAGING_MODE" = true ]; then
+  echo "Running init script (branch: $BRANCH, staging mode)..."
+  ssh $SSH_OPTS[@] root@$SERVER_IPV4 "bash /root/init.sh --staging /root/$(basename "$USER_CONFIG") $BRANCH"
+else
+  echo "Running init script (branch: $BRANCH)..."
+  ssh $SSH_OPTS[@] root@$SERVER_IPV4 "bash /root/init.sh /root/$(basename "$USER_CONFIG") $BRANCH"
+fi
 
 echo ""
 echo "Deployment complete!"

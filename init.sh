@@ -15,13 +15,31 @@ TPM_COMMIT="99469c4a9b1ccf77fade25842dc7bafbc8ce9946"
 DEFAULT_CONFIG_URL="https://raw.githubusercontent.com/shipurjan/vps-webhost-init/refs/heads/master/default.conf"
 
 # Parse command line arguments
-USER_CONFIG_SOURCE="$1"
-BRANCH="${2:-master}"
+USER_CONFIG_SOURCE=""
+BRANCH="master"
+STAGING_MODE=false
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --staging)
+      STAGING_MODE=true
+      shift
+      ;;
+    *)
+      if [ -z "$USER_CONFIG_SOURCE" ]; then
+        USER_CONFIG_SOURCE="$1"
+      else
+        BRANCH="$1"
+      fi
+      shift
+      ;;
+  esac
+done
 
 # Require config file
 if [ -z "$USER_CONFIG_SOURCE" ]; then
   echo "Error: Config file path is required"
-  echo "Usage: $0 <config-file>"
+  echo "Usage: $0 [--staging] <config-file> [branch]"
   exit 1
 fi
 
@@ -307,6 +325,12 @@ find "/root/$DOMAIN" -type f -exec sed -i \
   -e "s|__#TEMPLATE#:TELEGRAM_BOT_TOKEN__|${TELEGRAM_BOT_TOKEN:-}|g" \
   -e "s|__#TEMPLATE#:TELEGRAM_CHAT_ID__|${TELEGRAM_CHAT_ID:-}|g" \
   {} \;
+
+# Configure Let's Encrypt staging if requested
+if [ "$STAGING_MODE" = true ]; then
+  echo "  Using Let's Encrypt STAGING environment (testing mode)"
+  sed -i 's|{|\{\n\tacme_ca https://acme-staging-v02.api.letsencrypt.org/directory|' "/root/$DOMAIN/docker/caddy/Caddyfile"
+fi
 
 # Make scripts executable
 chmod +x "/root/$DOMAIN/scripts/"*.sh
