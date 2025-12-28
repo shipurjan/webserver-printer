@@ -23,6 +23,7 @@ SERVER_NAME="vps-webhost-init"
 # Parse command line parameters
 BRANCH="master"
 STAGING_MODE=false
+REBOOT_AFTER=false
 USER_CONFIG_ARG=""
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -32,6 +33,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --staging)
       STAGING_MODE=true
+      shift
+      ;;
+    --reboot)
+      REBOOT_AFTER=true
       shift
       ;;
     *)
@@ -168,13 +173,12 @@ echo "Copying files..."
 scp -q $SSH_OPTS[@] "$ROOT_DIR/init.sh" "$USER_CONFIG" root@$SERVER_IPV4:/root/
 
 # Run init
-if [ "$STAGING_MODE" = true ]; then
-  echo "Running init script (branch: $BRANCH, staging mode)..."
-  ssh $SSH_OPTS[@] root@$SERVER_IPV4 "bash /root/init.sh --staging /root/$(basename "$USER_CONFIG") $BRANCH"
-else
-  echo "Running init script (branch: $BRANCH)..."
-  ssh $SSH_OPTS[@] root@$SERVER_IPV4 "bash /root/init.sh /root/$(basename "$USER_CONFIG") $BRANCH"
-fi
+INIT_FLAGS=""
+[ "$STAGING_MODE" = true ] && INIT_FLAGS="$INIT_FLAGS --staging"
+[ "$REBOOT_AFTER" = true ] && INIT_FLAGS="$INIT_FLAGS --reboot"
+
+echo "Running init script (branch: $BRANCH)..."
+ssh $SSH_OPTS[@] root@$SERVER_IPV4 "bash /root/init.sh $INIT_FLAGS /root/$(basename "$USER_CONFIG") $BRANCH"
 
 echo ""
 echo "Deployment complete!"

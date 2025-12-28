@@ -18,11 +18,16 @@ DEFAULT_CONFIG_URL="https://raw.githubusercontent.com/shipurjan/vps-webhost-init
 USER_CONFIG_SOURCE=""
 BRANCH="master"
 STAGING_MODE=false
+REBOOT_AFTER=false
 
 while [[ $# -gt 0 ]]; do
   case $1 in
     --staging)
       STAGING_MODE=true
+      shift
+      ;;
+    --reboot)
+      REBOOT_AFTER=true
       shift
       ;;
     *)
@@ -39,7 +44,7 @@ done
 # Require config file
 if [ -z "$USER_CONFIG_SOURCE" ]; then
   echo "Error: Config file path is required"
-  echo "Usage: $0 [--staging] <config-file> [branch]"
+  echo "Usage: $0 [--staging] [--reboot] <config-file> [branch]"
   exit 1
 fi
 
@@ -691,17 +696,25 @@ echo "==================================================================="
 echo "  Setup Complete!"
 echo "==================================================================="
 echo ""
-echo "RECOMMENDATION: Reboot the server to apply all changes:"
-echo "  - SSH configuration changes (port, password auth)"
-echo "  - Kernel updates"
-echo "  - Verify Docker auto-starts on boot"
-echo ""
-echo "To reboot now: sudo reboot"
-echo "Or reboot later at your convenience."
-echo ""
-echo "After reboot, containers will auto-start (restart: unless-stopped)"
-echo "==================================================================="
-echo ""
+
+# Reboot if requested
+if [ "$REBOOT_AFTER" = true ]; then
+  echo "Rebooting server in 5 seconds..."
+  echo "Docker will auto-start on boot with all containers."
+  sleep 5
+  reboot
+else
+  echo "RECOMMENDATION: Reboot the server to apply all changes:"
+  echo "  - SSH configuration changes (port, password auth)"
+  echo "  - Kernel updates"
+  echo "  - Verify Docker auto-starts on boot"
+  echo ""
+  echo "To reboot: sudo reboot"
+  echo ""
+  echo "After reboot, containers will auto-start (restart: unless-stopped)"
+  echo "==================================================================="
+  echo ""
+fi
 
 # Attach if running interactively
 if [ -t 0 ]; then
