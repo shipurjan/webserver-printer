@@ -190,6 +190,9 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.
 apt update
 apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
+# Enable Docker to start on boot
+systemctl enable docker
+
 # Install lazydocker
 curl -fsSL "https://raw.githubusercontent.com/jesseduffield/lazydocker/$LAZYDOCKER_COMMIT/scripts/install_update_linux.sh" | bash
 
@@ -682,6 +685,23 @@ if ! tmux has-session -t "$TMUX_SESSION" 2>/dev/null; then
 
   echo "Tmux session created."
 fi
+
+echo ""
+echo "==================================================================="
+echo "  Setup Complete!"
+echo "==================================================================="
+echo ""
+echo "RECOMMENDATION: Reboot the server to apply all changes:"
+echo "  - SSH configuration changes (port, password auth)"
+echo "  - Kernel updates"
+echo "  - Verify Docker auto-starts on boot"
+echo ""
+echo "To reboot now: sudo reboot"
+echo "Or reboot later at your convenience."
+echo ""
+echo "After reboot, containers will auto-start (restart: unless-stopped)"
+echo "==================================================================="
+echo ""
 
 # Attach if running interactively
 if [ -t 0 ]; then
