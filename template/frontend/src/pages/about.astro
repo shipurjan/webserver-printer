@@ -1,5 +1,5 @@
 ---
-import VpsHostingIcon from '@/assets/vps-hosting.svg'
+import Logo from '@/assets/webserver-printer.svg'
 import Layout from '@/layouts/Layout.astro'
 ---
 
@@ -9,46 +9,111 @@ import Layout from '@/layouts/Layout.astro'
 >
   <div class="space-y-8">
     <div class="flex flex-col w-fit justify-center items-center space-y-4 mb-8">
-      <VpsHostingIcon />
-
+      <Logo class="w-24 h-24" />
       <h1 class="text-4xl font-bold text-gray-900">About This Setup</h1>
     </div>
 
-    <div class="space-y-6">
-      <div>
-        <h2 class="text-2xl font-semibold text-gray-900 mb-3">Stack</h2>
-        <ul class="space-y-2 text-gray-600">
-          <li>
-            <strong class="text-gray-900">Frontend:</strong> Astro (this page)
-          </li>
-          <li>
-            <strong class="text-gray-900">Reverse Proxy:</strong> Caddy with automatic
-            HTTPS
-          </li>
-          <li>
-            <strong class="text-gray-900">Logs:</strong> Dozzle at <code
-              class="px-2 py-1 bg-gray-100 rounded text-sm"
-              >logs.__#TEMPLATE#:DOMAIN__</code
-            >
-          </li>
-          <li>
-            <strong class="text-gray-900">Container Management:</strong> Docker Compose
-          </li>
-          <li>
-            <strong class="text-gray-900">Monitoring:</strong> lazydocker in tmux
-          </li>
-        </ul>
-      </div>
+    <section>
+      <h2 class="text-2xl font-semibold text-gray-900 mb-4">Stack</h2>
+      <table class="w-full text-left">
+        <tbody class="divide-y divide-gray-200">
+          <tr>
+            <td class="py-2 pr-4 font-medium text-gray-900">Frontend</td>
+            <td class="py-2 text-gray-600">Astro + TypeScript + Tailwind CSS</td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-4 font-medium text-gray-900">Reverse Proxy</td>
+            <td class="py-2 text-gray-600">Caddy with auto-HTTPS (Let's Encrypt)</td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-4 font-medium text-gray-900">Logs</td>
+            <td class="py-2 text-gray-600">
+              Dozzle at <code class="px-2 py-1 bg-gray-100 rounded text-sm">logs.__#TEMPLATE#:DOMAIN__</code>
+            </td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-4 font-medium text-gray-900">Containers</td>
+            <td class="py-2 text-gray-600">Docker Compose</td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-4 font-medium text-gray-900">Performance</td>
+            <td class="py-2 text-gray-600">Optimized for 100 Lighthouse score</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
 
-      <div>
-        <h2 class="text-2xl font-semibold text-gray-900 mb-3">Security</h2>
-        <ul class="space-y-2 text-gray-600">
-          <li>fail2ban protecting SSH and honeypot endpoints</li>
-          <li>Automatic SSL certificates via Let's Encrypt</li>
-          <li>Docker network isolation</li>
-        </ul>
-      </div>
-    </div>
+    <section>
+      <h2 class="text-2xl font-semibold text-gray-900 mb-4">Shell & Tools</h2>
+      <table class="w-full text-left">
+        <tbody class="divide-y divide-gray-200">
+          <tr>
+            <td class="py-2 pr-4 font-medium text-gray-900">Shell</td>
+            <td class="py-2 text-gray-600">Zsh + Oh My Zsh + Powerlevel10k</td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-4 font-medium text-gray-900">Terminal</td>
+            <td class="py-2 text-gray-600">tmux with TPM plugins</td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-4 font-medium text-gray-900">CLI Tools</td>
+            <td class="py-2 text-gray-600">lazydocker, ripgrep, fd, fzf, jq</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2 class="text-2xl font-semibold text-gray-900 mb-4">Security</h2>
+      <table class="w-full text-left">
+        <tbody class="divide-y divide-gray-200">
+          <tr>
+            <td class="py-2 pr-4 font-medium text-gray-900">Intrusion Prevention</td>
+            <td class="py-2 text-gray-600">fail2ban with 50+ honeypot patterns</td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-4 font-medium text-gray-900">SSH</td>
+            <td class="py-2 text-gray-600">Key-only authentication</td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-4 font-medium text-gray-900">HTTPS</td>
+            <td class="py-2 text-gray-600">Auto-managed via Let's Encrypt</td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-4 font-medium text-gray-900">Headers</td>
+            <td class="py-2 text-gray-600">Security headers + CSP</td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-4 font-medium text-gray-900">Alerts</td>
+            <td class="py-2 text-gray-600">Telegram notifications for bans, health, disk, updates</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2 class="text-2xl font-semibold text-gray-900 mb-4">CI/CD</h2>
+      <table class="w-full text-left">
+        <tbody class="divide-y divide-gray-200">
+          <tr>
+            <td class="py-2 pr-4 font-medium text-gray-900">Build</td>
+            <td class="py-2 text-gray-600">Type checking + build validation</td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-4 font-medium text-gray-900">Deploy</td>
+            <td class="py-2 text-gray-600">Auto-deploy on push to master</td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-4 font-medium text-gray-900">Performance</td>
+            <td class="py-2 text-gray-600">Lighthouse scoring on PRs</td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-4 font-medium text-gray-900">Security</td>
+            <td class="py-2 text-gray-600">Secret scanning with gitleaks</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
 
     <nav>
       <a

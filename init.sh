@@ -5,7 +5,7 @@ set -e
 export DEBIAN_FRONTEND=noninteractive
 
 # Script version
-VERSION="0.0.1"
+VERSION="0.0.2"
 
 # Pinned versions
 OHMYZSH_COMMIT="92aed2e93624124182ba977a91efa5bbe1e76d5f"
@@ -325,6 +325,7 @@ cp -r /tmp/webserver-printer/template "/root/$DOMAIN"
 
 # Replace placeholders with config values
 find "/root/$DOMAIN" -type f -exec sed -i \
+  -e "s|__#TEMPLATE#:VERSION__|$VERSION|g" \
   -e "s|__#TEMPLATE#:DOMAIN__|$DOMAIN|g" \
   -e "s|__#TEMPLATE#:EMAIL__|$EMAIL|g" \
   -e "s|__#TEMPLATE#:ADMIN_LOGIN__|$ADMIN_LOGIN|g" \
