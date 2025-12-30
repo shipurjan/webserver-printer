@@ -343,6 +343,10 @@ fi
 # Make scripts executable
 chmod +x "/root/$DOMAIN/scripts/"*.sh
 
+# Install crontab for monitoring scripts
+(crontab -l 2>/dev/null; cat "/root/$DOMAIN/crontab.example") | crontab -
+echo "  ✓ Crontab installed"
+
 # Generate bcrypt password hash for Caddy basic_auth
 ADMIN_PASSWORD_HASH=$(mkpasswd -m bcrypt -R 14 "$ADMIN_PASSWORD")
 
