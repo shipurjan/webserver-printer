@@ -5,7 +5,7 @@ set -e
 export DEBIAN_FRONTEND=noninteractive
 
 # Script version
-VERSION="0.0.5"
+VERSION="0.0.6"
 
 # Pinned versions
 OHMYZSH_COMMIT="92aed2e93624124182ba977a91efa5bbe1e76d5f"
@@ -25,22 +25,22 @@ REBOOT_AFTER=false
 
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --staging)
-      STAGING_MODE=true
-      shift
-      ;;
-    --reboot)
-      REBOOT_AFTER=true
-      shift
-      ;;
-    *)
-      if [ -z "$USER_CONFIG_SOURCE" ]; then
-        USER_CONFIG_SOURCE="$1"
-      else
-        BRANCH="$1"
-      fi
-      shift
-      ;;
+  --staging)
+    STAGING_MODE=true
+    shift
+    ;;
+  --reboot)
+    REBOOT_AFTER=true
+    shift
+    ;;
+  *)
+    if [ -z "$USER_CONFIG_SOURCE" ]; then
+      USER_CONFIG_SOURCE="$1"
+    else
+      BRANCH="$1"
+    fi
+    shift
+    ;;
   esac
 done
 
@@ -344,7 +344,10 @@ fi
 chmod +x "/root/$DOMAIN/scripts/"*.sh
 
 # Install crontab for monitoring scripts
-(crontab -l 2>/dev/null; cat "/root/$DOMAIN/crontab.example") | crontab -
+(
+  crontab -l 2>/dev/null
+  cat "/root/$DOMAIN/crontab.example"
+) | crontab -
 echo "  ✓ Crontab installed"
 
 # Generate bcrypt password hash for Caddy basic_auth
@@ -471,7 +474,7 @@ if [ -n "$GITHUB_REPO_URL" ]; then
   ssh-keygen -t ed25519 -f /root/.ssh/${DOMAIN_SANITIZED}_deploy_ro -N "" -C "deploy-ro@$DOMAIN"
 
   # Set up SSH config with aliases
-  cat >> /root/.ssh/config <<EOF
+  cat >>/root/.ssh/config <<EOF
 
 # GitHub deploy keys for $DOMAIN
 Host github.com-${DOMAIN_SANITIZED}-rw
@@ -570,7 +573,7 @@ EOF
   ssh-keygen -t ed25519 -f /root/.ssh/github_actions_key -N "" -C "github-actions@$DOMAIN"
 
   # Add GHA public key to authorized_keys
-  cat /root/.ssh/github_actions_key.pub >> /root/.ssh/authorized_keys
+  cat /root/.ssh/github_actions_key.pub >>/root/.ssh/authorized_keys
   echo "  ✓ GitHub Actions public key added to authorized_keys"
 
   # Print final instructions
@@ -668,7 +671,7 @@ ssh -p $SSH_PORT root@$DOMAIN"
   curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
     -d "chat_id=${TELEGRAM_CHAT_ID}" \
     -d "parse_mode=HTML" \
-    -d "text=${MESSAGE}" > /dev/null
+    -d "text=${MESSAGE}" >/dev/null
 fi
 
 echo ""
