@@ -5,8 +5,8 @@
 # Container health check - every 5 minutes
 */5 * * * * /root/__#TEMPLATE#:DOMAIN__/scripts/health-check.sh
 
-# Security updates check - weekly on Sunday at 9am
-0 9 * * 0 /root/__#TEMPLATE#:DOMAIN__/scripts/security-updates-check.sh
+# Reboot notification - daily at 7am (security updates auto-install via unattended-upgrades)
+0 7 * * * /root/__#TEMPLATE#:DOMAIN__/scripts/reboot-notify.sh
 
 # Disk space check - daily at 8am
 0 8 * * * /root/__#TEMPLATE#:DOMAIN__/scripts/disk-space-check.sh

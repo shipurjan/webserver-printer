@@ -109,6 +109,8 @@ ADMIN_PASSWORD="$ADMIN_PASSWORD"
 TELEGRAM_BOT_TOKEN="$TELEGRAM_BOT_TOKEN"
 TELEGRAM_CHAT_ID="$TELEGRAM_CHAT_ID"
 SSH_PORT="$SSH_PORT"
+AUTO_REBOOT="$AUTO_REBOOT"
+REBOOT_TIME="$REBOOT_TIME"
 GITHUB_REPO_URL="$GITHUB_REPO_URL"
 EOF
 
@@ -148,7 +150,9 @@ apt install -y \
   tree \
   vim \
   jq \
-  xsel
+  xsel \
+  unattended-upgrades \
+  needrestart
 
 # Create fd symlink (Debian names it fdfind)
 mkdir -p /root/.local/bin
@@ -218,13 +222,7 @@ git clone https://github.com/zsh-users/zsh-autosuggestions /root/.oh-my-zsh/cust
 git -C /root/.oh-my-zsh/custom/plugins/zsh-autosuggestions fetch --depth=1 origin $ZSH_AUTOSUGGESTIONS_COMMIT
 git -C /root/.oh-my-zsh/custom/plugins/zsh-autosuggestions checkout $ZSH_AUTOSUGGESTIONS_COMMIT
 
-# Detect distro for plugin
-DISTRO_PLUGIN="debian"
-if grep -qi ubuntu /etc/os-release; then
-  DISTRO_PLUGIN="ubuntu"
-fi
-
-sed -i "s/plugins=(git)/plugins=(git docker docker-compose sudo fzf colored-man-pages extract history command-not-found ufw $DISTRO_PLUGIN zsh-autosuggestions)/" /root/.zshrc
+sed -i "s/plugins=(git)/plugins=(git docker docker-compose sudo fzf colored-man-pages extract history command-not-found ufw debian zsh-autosuggestions)/" /root/.zshrc
 
 # Install powerlevel10k theme (pinned)
 git clone https://github.com/romkatv/powerlevel10k.git /root/.oh-my-zsh/custom/themes/powerlevel10k
@@ -332,6 +330,8 @@ find "/root/$DOMAIN" -type f -exec sed -i \
   -e "s|__#TEMPLATE#:ADMIN_PASSWORD__|$ADMIN_PASSWORD|g" \
   -e "s|__#TEMPLATE#:TELEGRAM_BOT_TOKEN__|${TELEGRAM_BOT_TOKEN:-}|g" \
   -e "s|__#TEMPLATE#:TELEGRAM_CHAT_ID__|${TELEGRAM_CHAT_ID:-}|g" \
+  -e "s|__#TEMPLATE#:AUTO_REBOOT__|${AUTO_REBOOT:-false}|g" \
+  -e "s|__#TEMPLATE#:REBOOT_TIME__|${REBOOT_TIME:-04:00}|g" \
   {} \;
 
 # Configure Let's Encrypt staging if requested
@@ -339,6 +339,14 @@ if [ "$STAGING_MODE" = true ]; then
   echo "  Using Let's Encrypt STAGING environment (testing mode)"
   sed -i '1 a\	acme_ca https://acme-staging-v02.api.letsencrypt.org/directory' "/root/$DOMAIN/docker/caddy/Caddyfile"
 fi
+
+# Configure unattended-upgrades
+echo "=== Configuring automatic security updates ==="
+cp -r "/root/$DOMAIN/etc/apt/apt.conf.d/"* /etc/apt/apt.conf.d/
+mkdir -p /etc/needrestart
+cp "/root/$DOMAIN/etc/needrestart/needrestart.conf" /etc/needrestart/
+systemctl enable --now unattended-upgrades
+echo "  Automatic security updates enabled (security-only)"
 
 # Make scripts executable
 chmod +x "/root/$DOMAIN/scripts/"*.sh
@@ -651,21 +659,25 @@ echo "=== Setup complete ==="
 if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
   echo "  Sending Telegram notification..."
 
-  MESSAGE="<b>✅ Server Setup Complete - $DOMAIN</b>
+  MESSAGE="<b>Server Setup Complete - $DOMAIN</b>
 
 Your VPS has been successfully configured with webserver-printer.
 
-<b>🔔 Notifications Enabled For:</b>
-• <b>fail2ban</b> - IP bans from honeypot traps and SSH attacks
-• <b>Container Health</b> - Alerts when Docker containers become unhealthy
-• <b>Disk Space</b> - Warnings when disk usage exceeds 80%
-• <b>Security Updates</b> - Weekly notifications about available updates
+<b>Notifications Enabled For:</b>
+- <b>fail2ban</b> - IP bans from honeypot traps and SSH attacks
+- <b>Container Health</b> - Alerts when Docker containers become unhealthy
+- <b>Disk Space</b> - Warnings when disk usage exceeds 80%
+- <b>Reboot Required</b> - Daily check after security updates
 
-<b>📦 Services Running:</b>
-• Frontend: https://$DOMAIN
-• Logs: https://logs.$DOMAIN
+<b>Security Updates:</b>
+- Auto-install: Enabled (security-only)
+- Auto-reboot: $AUTO_REBOOT
 
-<b>🔐 SSH Access:</b>
+<b>Services Running:</b>
+- Frontend: https://$DOMAIN
+- Logs: https://logs.$DOMAIN
+
+<b>SSH Access:</b>
 ssh -p $SSH_PORT root@$DOMAIN"
 
   curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \

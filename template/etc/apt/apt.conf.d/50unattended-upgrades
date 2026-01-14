@@ -1,0 +1,20 @@
+// Debian automatic security updates configuration
+// Managed by webserver-printer
+
+Unattended-Upgrade::Origins-Pattern {
+    "origin=Debian,codename=${distro_codename}-security,label=Debian-Security";
+};
+
+// Remove unused kernel packages and dependencies
+Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+Unattended-Upgrade::Remove-New-Unused-Dependencies "true";
+
+// Automatic reboot configuration
+Unattended-Upgrade::Automatic-Reboot "__#TEMPLATE#:AUTO_REBOOT__";
+Unattended-Upgrade::Automatic-Reboot-Time "__#TEMPLATE#:REBOOT_TIME__";
+Unattended-Upgrade::Automatic-Reboot-WithUsers "true";
+
+// Logging
+Unattended-Upgrade::SyslogEnable "true";
+Unattended-Upgrade::SyslogFacility "daemon";

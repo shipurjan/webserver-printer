@@ -4,7 +4,7 @@
 
 One command to provision a production-ready VPS with Docker, auto-HTTPS, fail2ban honeypots, GitHub CI/CD, and a Lighthouse-perfect SPA Astro frontend.
 
-> **Note:** This is currently a personal script. It requires Debian/Ubuntu (apt), a domain pointed to your VPS, and SSH key access. May add multi-distro support and easier setup if there's interest.
+> **Note:** This is currently a personal script. It requires Debian 13 (Trixie), a domain pointed to your VPS, and SSH key access.
 
 ## What You Get
 
@@ -24,7 +24,7 @@ This is infrastructure automation, not magic. Read the code or don't run it.
 
 ## Usage
 
-Run on any fresh Debian/Ubuntu VPS:
+Run on any fresh Debian 13 (Trixie) VPS:
 
 1. **Download the default config:**
    ```bash
@@ -60,6 +60,8 @@ The config file is merged with defaults, with your values overriding the base co
 - **SSH**: Key-only auth, optional custom port
 - **fail2ban**: SSH protection + 50 honeypot patterns (wp-admin, phpmyadmin, .env, etc.), Docker-aware iptables
 - **Caddy**: Bot blocking (GPTBot, CCBot, etc.), security headers, CSP
+- **unattended-upgrades**: Automatic security-only updates from Debian Security
+- **needrestart**: Automatic service restarts after library updates
 
 ## Monitoring (Optional)
 
@@ -67,7 +69,7 @@ The template includes optional monitoring scripts that send Telegram notificatio
 
 ### Available Scripts (`template/scripts/`)
 - **health-check.sh** - Monitors container health, alerts on failures (every 5 min)
-- **security-updates-check.sh** - Weekly check for security updates (Sunday 9am)
+- **reboot-notify.sh** - Notifies when reboot is required after security updates (daily 7am)
 - **disk-space-check.sh** - Alerts when disk usage exceeds 80% (daily 8am)
 - **fail2ban** - Sends alerts when IPs are banned
 
@@ -104,6 +106,8 @@ Default configuration in [default.conf](default.conf):
 - `TELEGRAM_BOT_TOKEN` - (Optional) Bot token for monitoring alerts
 - `TELEGRAM_CHAT_ID` - (Optional) Your Telegram chat ID for alerts
 - `SSH_PORT` - SSH port (default: 22, change to reduce bot spam)
+- `AUTO_REBOOT` - Automatically reboot when kernel updates require it (default: false)
+- `REBOOT_TIME` - Time for automatic reboot if enabled (default: 04:00)
 
 ## Template System
 
