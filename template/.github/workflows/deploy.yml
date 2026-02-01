@@ -16,7 +16,7 @@ jobs:
     if: ${{ github.actor != 'dependabot[bot]' && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') }}
     steps:
       - name: Deploy to VPS
-        uses: appleboy/ssh-action@v1.2.4
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: '${{ secrets.VPS_HOST }}'
           username: root
