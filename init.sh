@@ -110,6 +110,7 @@ TELEGRAM_BOT_TOKEN="$TELEGRAM_BOT_TOKEN"
 TELEGRAM_CHAT_ID="$TELEGRAM_CHAT_ID"
 SSH_PORT="$SSH_PORT"
 GITHUB_REPO_URL="$GITHUB_REPO_URL"
+GITHUB_TOKEN="$GITHUB_TOKEN"
 EOF
 
 rm -f "$USER_CONFIG_FILE"
@@ -315,8 +316,8 @@ set -s escape-time 50
 run '~/.tmux/plugins/tpm/tpm'
 EOF
 
-# Install tmux plugins
-/root/.tmux/plugins/tpm/bin/install_plugins
+# Install tmux plugins (override TERM in case the SSH client forwarded an unknown terminal)
+TERM=xterm-256color /root/.tmux/plugins/tpm/bin/install_plugins
 
 # Clone repo and scaffold project from template
 echo "Cloning template from GitHub (branch: $BRANCH)"
@@ -461,6 +462,32 @@ git -c user.email='<>' -c user.name='webserver-printer' commit -m "init (webserv
 git config --global user.email "$EMAIL"
 git config --global user.name "$FULL_NAME"
 
+# GitHub API helper - makes authenticated requests, returns body, fails on HTTP 4xx/5xx
+github_api() {
+  local method="$1" endpoint="$2" data="$3"
+  local url="https://api.github.com${endpoint}"
+  local curl_args=(-s -w "\n%{http_code}" -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28")
+
+  if [ -n "$data" ]; then
+    curl_args+=(-H "Content-Type: application/json" -d "$data")
+  fi
+
+  local response
+  response=$(curl "${curl_args[@]}" -X "$method" "$url")
+  local http_code
+  http_code=$(echo "$response" | tail -1)
+  local body
+  body=$(echo "$response" | sed '$d')
+
+  if [ "$http_code" -ge 400 ] 2>/dev/null; then
+    echo "  ERROR: GitHub API $method $endpoint returned HTTP $http_code" >&2
+    echo "  Response: $body" >&2
+    return 1
+  fi
+
+  echo "$body"
+}
+
 # GitHub integration (optional)
 if [ -n "$GITHUB_REPO_URL" ]; then
   echo "=== Setting up GitHub integration ==="
@@ -495,41 +522,83 @@ EOF
   # Extract repo path from URL (git@github.com:user/repo.git → user/repo)
   REPO_PATH=$(echo "$GITHUB_REPO_URL" | sed 's/.*:\(.*\)\.git/\1/')
 
-  # Interactive prompt for user to add deploy keys
-  echo ""
-  echo "==================================================================="
-  echo "  ADD DEPLOY KEYS TO GITHUB"
-  echo "==================================================================="
-  echo ""
-  echo "Go to: https://github.com/$REPO_PATH/settings/keys"
-  echo ""
-  echo "1. Click 'Add deploy key'"
-  echo "   Title: deploy-rw@$DOMAIN"
-  echo "   Key:"
-  echo ""
-  cat /root/.ssh/${DOMAIN_SANITIZED}_deploy_rw.pub
-  echo ""
-  echo "   ☑ Check 'Allow write access'"
-  echo ""
-  echo "2. Click 'Add deploy key' again"
-  echo "   Title: deploy-ro@$DOMAIN"
-  echo "   Key:"
-  echo ""
-  cat /root/.ssh/${DOMAIN_SANITIZED}_deploy_ro.pub
-  echo ""
-  echo "   ☐ Leave 'Allow write access' UNCHECKED"
-  echo ""
-  echo "==================================================================="
-  echo ""
-  echo "Press ENTER when you've added both deploy keys to GitHub..."
-  read </dev/tty
+  if [ -n "$GITHUB_TOKEN" ]; then
+    echo "  GitHub token detected - using API for automated setup"
+
+    # Delete existing deploy keys with matching titles
+    echo "  Checking for existing deploy keys..."
+    EXISTING_KEYS=$(github_api GET "/repos/$REPO_PATH/keys") || {
+      echo "  ERROR: Failed to list deploy keys. Check your token permissions."
+      exit 1
+    }
+
+    for KEY_TITLE in "deploy-rw@$DOMAIN" "deploy-ro@$DOMAIN"; do
+      KEY_ID=$(echo "$EXISTING_KEYS" | jq -r ".[] | select(.title == \"$KEY_TITLE\") | .id")
+      if [ -n "$KEY_ID" ] && [ "$KEY_ID" != "null" ]; then
+        echo "  Deleting existing key: $KEY_TITLE (ID: $KEY_ID)"
+        github_api DELETE "/repos/$REPO_PATH/keys/$KEY_ID" >/dev/null || true
+      fi
+    done
+
+    # Add RW deploy key
+    RW_PUB_KEY=$(cat /root/.ssh/${DOMAIN_SANITIZED}_deploy_rw.pub)
+    echo "  Adding deploy key: deploy-rw@$DOMAIN (read-write)"
+    github_api POST "/repos/$REPO_PATH/keys" \
+      "{\"title\":\"deploy-rw@$DOMAIN\",\"key\":\"$RW_PUB_KEY\",\"read_only\":false}" >/dev/null || {
+      echo "  ERROR: Failed to add RW deploy key"
+      exit 1
+    }
+
+    # Add RO deploy key
+    RO_PUB_KEY=$(cat /root/.ssh/${DOMAIN_SANITIZED}_deploy_ro.pub)
+    echo "  Adding deploy key: deploy-ro@$DOMAIN (read-only)"
+    github_api POST "/repos/$REPO_PATH/keys" \
+      "{\"title\":\"deploy-ro@$DOMAIN\",\"key\":\"$RO_PUB_KEY\",\"read_only\":true}" >/dev/null || {
+      echo "  ERROR: Failed to add RO deploy key"
+      exit 1
+    }
+
+    echo "  ✓ Deploy keys configured via API"
+  else
+    # Interactive prompt for user to add deploy keys
+    echo ""
+    echo "==================================================================="
+    echo "  ADD DEPLOY KEYS TO GITHUB"
+    echo "==================================================================="
+    echo ""
+    echo "Go to: https://github.com/$REPO_PATH/settings/keys"
+    echo ""
+    echo "1. Click 'Add deploy key'"
+    echo "   Title: deploy-rw@$DOMAIN"
+    echo "   Key:"
+    echo ""
+    cat /root/.ssh/${DOMAIN_SANITIZED}_deploy_rw.pub
+    echo ""
+    echo "   ☑ Check 'Allow write access'"
+    echo ""
+    echo "2. Click 'Add deploy key' again"
+    echo "   Title: deploy-ro@$DOMAIN"
+    echo "   Key:"
+    echo ""
+    cat /root/.ssh/${DOMAIN_SANITIZED}_deploy_ro.pub
+    echo ""
+    echo "   ☐ Leave 'Allow write access' UNCHECKED"
+    echo ""
+    echo "==================================================================="
+    echo ""
+    echo "Press ENTER when you've added both deploy keys to GitHub..."
+    read </dev/tty
+  fi
 
   # Push using RW key
   echo ""
   echo "=== Pushing to GitHub ==="
   git remote add origin "git@github.com-${DOMAIN_SANITIZED}-rw:${REPO_PATH}.git"
 
-  if ! git push -u origin master 2>&1 | tee /tmp/git_push.log; then
+  PUSH_FLAGS="-u"
+  [ -n "$GITHUB_TOKEN" ] && PUSH_FLAGS="--force -u"
+
+  if ! git push $PUSH_FLAGS origin master 2>&1 | tee /tmp/git_push.log; then
     echo "  ERROR: Git push failed. Check /tmp/git_push.log for details"
     echo "  Common issues:"
     echo "  - Deploy key not added to GitHub"
@@ -537,6 +606,16 @@ EOF
     echo "  - Wrong repository URL"
     exit 1
   fi
+
+  # Push dev branch (before switching to RO key)
+  echo "  Pushing dev branch..."
+  git checkout -b dev
+  if ! git push $PUSH_FLAGS origin dev 2>&1 | tee -a /tmp/git_push.log; then
+    echo "  WARNING: Dev branch push failed"
+  else
+    echo "  ✓ Dev branch pushed"
+  fi
+  git checkout master
 
   # Switch remote to RO key
   echo "  Switching to read-only deploy key..."
@@ -549,16 +628,6 @@ EOF
     exit 1
   fi
   echo "  ✓ Read-only deploy key working"
-
-  # Push dev branch
-  echo "  Pushing dev branch..."
-  git checkout -b dev
-  if ! git push -u origin dev 2>&1 | tee -a /tmp/git_push.log; then
-    echo "  WARNING: Dev branch push failed"
-  else
-    echo "  ✓ Dev branch pushed"
-  fi
-  git checkout master
 
   # Delete RW key
   rm -f /root/.ssh/${DOMAIN_SANITIZED}_deploy_rw /root/.ssh/${DOMAIN_SANITIZED}_deploy_rw.pub
@@ -576,45 +645,143 @@ EOF
   cat /root/.ssh/github_actions_key.pub >>/root/.ssh/authorized_keys
   echo "  ✓ GitHub Actions public key added to authorized_keys"
 
-  # Print final instructions
-  echo ""
-  echo "==================================================================="
-  echo "  GitHub Repository Setup Complete!"
-  echo "==================================================================="
-  echo ""
-  echo "Repository: $GITHUB_REPO_URL"
-  echo "Branch: master"
-  echo ""
-  echo "NEXT STEPS:"
-  echo ""
-  echo "1. Remove the READ-WRITE deploy key from GitHub:"
-  echo "   https://github.com/$REPO_PATH/settings/keys"
-  echo "   (Delete: deploy-rw@$DOMAIN)"
-  echo "   (Keep: deploy-ro@$DOMAIN)"
-  echo ""
-  echo "2. Create GitHub environment 'deploy':"
-  echo "   https://github.com/$REPO_PATH/settings/environments/new"
-  echo "   - Environment name: deploy"
-  echo "   - Deployment branches and tags: Selected branches and tags"
-  echo "   - Add deployment branch rule 1: Branch name 'master'"
-  echo "   - Add deployment branch rule 2: Branch name 'dev'"
-  echo ""
-  echo "3. Add these secrets to the 'deploy' environment:"
-  echo "   https://github.com/$REPO_PATH/settings/environments"
-  echo "   (Click on 'deploy' environment, then add secrets)"
-  echo ""
-  echo "   VPS_HOST: $DOMAIN"
-  echo "   SSH_PORT: $SSH_PORT"
-  echo "   VPS_SSH_KEY:"
-  cat /root/.ssh/github_actions_key
-  echo ""
-  echo "==================================================================="
-  echo ""
-  echo "IMPORTANT: Add the secrets above to the 'deploy' environment now."
-  echo "Do NOT store the VPS_SSH_KEY anywhere else - only in GitHub secrets."
-  echo ""
-  echo "Press ENTER after you've completed all steps above..."
-  read </dev/tty
+  if [ -n "$GITHUB_TOKEN" ]; then
+    # Automated: set up environment and secrets via API
+    echo "  Setting up GitHub environment and secrets via API..."
+
+    # Create/update the "deploy" environment with custom branch policies
+    echo "  Creating 'deploy' environment..."
+    github_api PUT "/repos/$REPO_PATH/environments/deploy" \
+      '{"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}' >/dev/null || {
+      echo "  ERROR: Failed to create deploy environment"
+      exit 1
+    }
+
+    # Add branch deployment rules for master and dev
+    EXISTING_POLICIES=$(github_api GET "/repos/$REPO_PATH/environments/deploy/deployment-branch-policies") || true
+    for BRANCH_NAME in master dev; do
+      EXISTING_ID=$(echo "$EXISTING_POLICIES" | jq -r ".branch_policies[]? | select(.name == \"$BRANCH_NAME\") | .id")
+      if [ -z "$EXISTING_ID" ] || [ "$EXISTING_ID" = "null" ]; then
+        echo "  Adding branch policy: $BRANCH_NAME"
+        github_api POST "/repos/$REPO_PATH/environments/deploy/deployment-branch-policies" \
+          "{\"name\":\"$BRANCH_NAME\",\"type\":\"branch\"}" >/dev/null || {
+          echo "  WARNING: Failed to add branch policy for $BRANCH_NAME"
+        }
+      fi
+    done
+    echo "  ✓ Deploy environment configured"
+
+    # Get environment's public key for secret encryption
+    echo "  Configuring environment secrets..."
+    PUB_KEY_RESPONSE=$(github_api GET "/repos/$REPO_PATH/environments/deploy/secrets/public-key") || {
+      echo "  ERROR: Failed to get environment public key"
+      exit 1
+    }
+    ENV_PUB_KEY=$(echo "$PUB_KEY_RESPONSE" | jq -r '.key')
+    ENV_PUB_KEY_ID=$(echo "$PUB_KEY_RESPONSE" | jq -r '.key_id')
+
+    # Encrypt all secrets in a single Docker container using libsodium
+    echo "  Encrypting secrets..."
+    GHA_PRIVATE_KEY=$(cat /root/.ssh/github_actions_key)
+    ENCRYPTED_SECRETS=$(docker run --rm \
+      -e PUBLIC_KEY="$ENV_PUB_KEY" \
+      -e SECRET_VPS_HOST="$DOMAIN" \
+      -e SECRET_SSH_PORT="$SSH_PORT" \
+      -e "SECRET_VPS_SSH_KEY=$GHA_PRIVATE_KEY" \
+      node:24-alpine sh -c '
+        npm install --no-fund --no-audit --loglevel=error libsodium-wrappers 2>/dev/null >&2
+        node -e "
+          const sodium = require(\"libsodium-wrappers\");
+          (async () => {
+            await sodium.ready;
+            const key = sodium.from_base64(process.env.PUBLIC_KEY, sodium.base64_variants.ORIGINAL);
+            const results = {};
+            for (const name of [\"VPS_HOST\", \"SSH_PORT\", \"VPS_SSH_KEY\"]) {
+              const value = process.env[\"SECRET_\" + name];
+              const encrypted = sodium.crypto_box_seal(sodium.from_string(value), key);
+              results[name] = sodium.to_base64(encrypted, sodium.base64_variants.ORIGINAL);
+            }
+            console.log(JSON.stringify(results));
+          })();
+        "
+      ') || {
+      echo "  ERROR: Failed to encrypt secrets"
+      exit 1
+    }
+
+    # Set each secret via API
+    for SECRET_NAME in VPS_HOST SSH_PORT VPS_SSH_KEY; do
+      ENCRYPTED_VALUE=$(echo "$ENCRYPTED_SECRETS" | jq -r ".$SECRET_NAME")
+      echo "  Setting secret: $SECRET_NAME"
+      github_api PUT "/repos/$REPO_PATH/environments/deploy/secrets/$SECRET_NAME" \
+        "{\"encrypted_value\":\"$ENCRYPTED_VALUE\",\"key_id\":\"$ENV_PUB_KEY_ID\"}" >/dev/null || {
+        echo "  ERROR: Failed to set secret $SECRET_NAME"
+        exit 1
+      }
+    done
+    echo "  ✓ Environment secrets configured"
+
+    # Delete RW deploy key from GitHub (no longer needed after push)
+    echo "  Removing RW deploy key from GitHub..."
+    CURRENT_KEYS=$(github_api GET "/repos/$REPO_PATH/keys") || true
+    RW_KEY_ID=$(echo "$CURRENT_KEYS" | jq -r ".[] | select(.title == \"deploy-rw@$DOMAIN\") | .id")
+    if [ -n "$RW_KEY_ID" ] && [ "$RW_KEY_ID" != "null" ]; then
+      github_api DELETE "/repos/$REPO_PATH/keys/$RW_KEY_ID" >/dev/null || true
+      echo "  ✓ RW deploy key removed from GitHub"
+    fi
+
+    echo ""
+    echo "==================================================================="
+    echo "  GitHub Repository Setup Complete!"
+    echo "==================================================================="
+    echo ""
+    echo "Repository: $GITHUB_REPO_URL"
+    echo "Branches: master, dev"
+    echo "Environment: deploy (secrets configured)"
+    echo ""
+    echo "All GitHub configuration was done automatically via API."
+    echo "No manual steps required."
+  else
+    # Print final instructions (interactive mode)
+    echo ""
+    echo "==================================================================="
+    echo "  GitHub Repository Setup Complete!"
+    echo "==================================================================="
+    echo ""
+    echo "Repository: $GITHUB_REPO_URL"
+    echo "Branch: master"
+    echo ""
+    echo "NEXT STEPS:"
+    echo ""
+    echo "1. Remove the READ-WRITE deploy key from GitHub:"
+    echo "   https://github.com/$REPO_PATH/settings/keys"
+    echo "   (Delete: deploy-rw@$DOMAIN)"
+    echo "   (Keep: deploy-ro@$DOMAIN)"
+    echo ""
+    echo "2. Create GitHub environment 'deploy':"
+    echo "   https://github.com/$REPO_PATH/settings/environments/new"
+    echo "   - Environment name: deploy"
+    echo "   - Deployment branches and tags: Selected branches and tags"
+    echo "   - Add deployment branch rule 1: Branch name 'master'"
+    echo "   - Add deployment branch rule 2: Branch name 'dev'"
+    echo ""
+    echo "3. Add these secrets to the 'deploy' environment:"
+    echo "   https://github.com/$REPO_PATH/settings/environments"
+    echo "   (Click on 'deploy' environment, then add secrets)"
+    echo ""
+    echo "   VPS_HOST: $DOMAIN"
+    echo "   SSH_PORT: $SSH_PORT"
+    echo "   VPS_SSH_KEY:"
+    cat /root/.ssh/github_actions_key
+    echo ""
+    echo "==================================================================="
+    echo ""
+    echo "IMPORTANT: Add the secrets above to the 'deploy' environment now."
+    echo "Do NOT store the VPS_SSH_KEY anywhere else - only in GitHub secrets."
+    echo ""
+    echo "Press ENTER after you've completed all steps above..."
+    read </dev/tty
+  fi
 
   # Delete GHA private key from server
   rm -f /root/.ssh/github_actions_key

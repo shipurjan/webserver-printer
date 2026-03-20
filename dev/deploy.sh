@@ -178,7 +178,7 @@ INIT_FLAGS=""
 [ "$REBOOT_AFTER" = true ] && INIT_FLAGS="$INIT_FLAGS --reboot"
 
 echo "Running init script (branch: $BRANCH)..."
-ssh $SSH_OPTS[@] root@$SERVER_IPV4 "bash /root/init.sh $INIT_FLAGS /root/$(basename "$USER_CONFIG") $BRANCH"
+ssh -t $SSH_OPTS[@] root@$SERVER_IPV4 "bash /root/init.sh $INIT_FLAGS /root/$(basename "$USER_CONFIG") $BRANCH"
 
 echo ""
 echo "Deployment complete!"
