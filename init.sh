@@ -165,7 +165,7 @@ cat >/etc/ssh/sshd_config.d/99-hardening.conf <<EOF
 # Disable password authentication (key-only)
 PasswordAuthentication no
 PubkeyAuthentication yes
-ChallengeResponseAuthentication no
+KbdInteractiveAuthentication no
 UsePAM yes
 
 # Root login with keys only
@@ -179,7 +179,7 @@ if [ "$SSH_PORT" != "22" ]; then
 fi
 
 # Test SSH config before restarting
-if ! sshd -t 2>/dev/null; then
+if ! sshd -t; then
   echo "  ERROR: SSH config test failed, reverting changes"
   rm -f /etc/ssh/sshd_config.d/99-hardening.conf /etc/ssh/sshd_config.d/99-custom-port.conf
   exit 1
