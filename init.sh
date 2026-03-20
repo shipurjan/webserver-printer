@@ -658,7 +658,7 @@ EOF
     }
 
     # Add branch deployment rules for master and dev
-    EXISTING_POLICIES=$(github_api GET "/repos/$REPO_PATH/environments/deploy/deployment-branch-policies") || true
+    EXISTING_POLICIES=$(github_api GET "/repos/$REPO_PATH/environments/deploy/deployment-branch-policies" 2>/dev/null) || true
     for BRANCH_NAME in master dev; do
       EXISTING_ID=$(echo "$EXISTING_POLICIES" | jq -r ".branch_policies[]? | select(.name == \"$BRANCH_NAME\") | .id")
       if [ -z "$EXISTING_ID" ] || [ "$EXISTING_ID" = "null" ]; then
@@ -689,7 +689,8 @@ EOF
       -e SECRET_SSH_PORT="$SSH_PORT" \
       -e "SECRET_VPS_SSH_KEY=$GHA_PRIVATE_KEY" \
       node:24-alpine sh -c '
-        npm install --no-fund --no-audit --loglevel=error libsodium-wrappers 2>/dev/null >&2
+        cd /tmp && npm init -y >/dev/null 2>&1
+        npm install --no-fund --no-audit --loglevel=error libsodium-wrappers >/dev/null 2>&1
         node -e "
           const sodium = require(\"libsodium-wrappers\");
           (async () => {
