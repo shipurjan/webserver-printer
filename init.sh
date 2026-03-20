@@ -160,6 +160,9 @@ git config --global advice.detachedHead false
 
 echo "=== Hardening SSH configuration ==="
 
+# Ensure privilege separation directory exists (needed for sshd -t)
+mkdir -p /run/sshd
+
 # Create SSH hardening config
 cat >/etc/ssh/sshd_config.d/99-hardening.conf <<EOF
 # Disable password authentication (key-only)
