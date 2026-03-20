@@ -186,7 +186,7 @@ if ! sshd -t 2>/dev/null; then
 fi
 
 # Restart SSH to apply changes
-systemctl restart sshd
+systemctl restart ssh 2>/dev/null || systemctl restart sshd 2>/dev/null || true
 echo "  SSH hardening applied (password auth disabled, key-only)"
 
 echo "=== Installing Docker ==="
